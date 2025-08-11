@@ -33,7 +33,7 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("🧱 Find Next Buy")
+st.title("Find Next Buy")
 st.caption(
     "Rank sets by investment fit (budget, horizon, liquidity) with transparent scoring. "
     "Export to BrickLink Wanted List or a simple buylist CSV."
@@ -623,14 +623,14 @@ else:
     colA, colB = st.columns(2)
     with colA:
         st.download_button(
-            "⬇️ BrickLink Wanted List (XML)",
+            "BrickLink Wanted List (XML)",
             data=xml_bytes,
             file_name="wanted_list.xml",
             mime="application/xml",
         )
     with colB:
         st.download_button(
-            "⬇️ Buylist CSV",
+            "Buylist CSV",
             data=csv_bytes,
             file_name="buylist.csv",
             mime="text/csv",
