@@ -1,0 +1,13 @@
+set_num,name,theme,retail_price,current_new_price,current_used_price,part_out_value,units_sold_30d,active_sellers,release_date,licensed,exclusive_minifigs,box_volume_l,avg_discount,rerelease_risk,theme_avg_growth,trend_90d
+75257-1,Millennium Falcon,Star Wars,160,170,120,230,180,250,2019-10-04,true,3,27,0.12,0.35,0.07,0.02
+10265-1,Ford Mustang,Creator Expert,150,220,180,280,120,190,2019-03-01,true,0,23,0.09,0.25,0.09,0.04
+21319-1,Central Perk,Ideas,60,85,70,110,250,300,2019-09-01,true,7,8,0.15,0.20,0.08,0.03
+76956-1,T. rex Breakout,Jurassic Park,100,120,95,150,160,220,2022-04-17,true,2,12,0.10,0.30,0.06,0.01
+71741-1,NINJAGO City Gardens,NINJAGO,300,380,320,520,80,120,2021-02-01,false,20,45,0.05,0.15,0.10,0.05
+42115-1,Lamborghini Sián FKP 37,Technic,380,450,400,600,70,110,2020-05-28,true,0,55,0.08,0.20,0.05,0.02
+10281-1,Bonsai Tree,Icons,50,60,45,80,300,350,2021-01-01,false,0,5,0.10,0.05,0.11,0.02
+10311-1,Orchid,Icons,50,58,46,75,280,330,2022-05-01,false,0,5,0.10,0.05,0.11,0.03
+60330-1,Hospital,City,120,100,80,140,90,200,2022-01-01,false,0,18,0.20,0.05,0.03,-0.02
+42143-1,Ferrari Daytona SP3,Technic,450,520,470,700,60,90,2022-06-01,true,0,58,0.07,0.20,0.05,0.03
+21336-1,The Office,Ideas,120,130,110,170,210,260,2022-10-01,true,15,14,0.12,0.20,0.07,0.01
+21058-1,The Great Pyramid of Giza,Architecture,130,150,125,200,140,180,2022-06-01,false,0,16,0.09,0.10,0.06,0.02
