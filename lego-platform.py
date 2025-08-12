@@ -539,7 +539,12 @@ df["part_out_ratio"] = df.apply(
     lambda r: (r["part_out_value"] / r["retail_price"]) if (r.get("part_out_ratio") is np.nan or pd.isna(r.get("part_out_ratio"))) and r["retail_price"] and not pd.isna(r["part_out_value"]) else r.get("part_out_ratio", np.nan),
     axis=1
 )
-df["licensed"] = df.get("licensed", 0).apply(_safe_bool01)
+
+if "licensed" in df.columns:
+    df["licensed"] = df["licensed"].apply(_safe_bool01)
+else:
+    df["licensed"] = 0
+
 
 # Target buy price from desired discount
 df["target_buy_price"] = df["retail_price"] * (1 - desired_discount_pct / 100.0)
@@ -637,9 +642,9 @@ else:
 
     e1, e2 = st.columns(2)
     with e1:
-        st.download_button("⬇️ BrickLink Wanted List (XML)", data=xml_bytes, file_name="wanted_list.xml", mime="application/xml")
+        st.download_button("BrickLink Wanted List (XML)", data=xml_bytes, file_name="wanted_list.xml", mime="application/xml")
     with e2:
-        st.download_button("⬇️ Buylist CSV", data=csv_bytes, file_name="buylist.csv", mime="text/csv")
+        st.download_button("Buylist CSV", data=csv_bytes, file_name="buylist.csv", mime="text/csv")
 
 st.markdown("---")
 with st.expander("CSV schema (columns)"):
