@@ -1,5 +1,5 @@
 # find_next_buy.py
-# ReUseBricks — "Find Next Buy" with Quick Set Lookup (v1.2)
+# ReUseBricks — "Find Next Buy" with Quick Set Lookup (v1.3)
 #
 # Type a LEGO set number, we fetch live data from:
 # - Rebrickable (name/theme/year/image)
@@ -14,8 +14,6 @@
 # - BrickLink uses OAuth1 (Consumer Key/Secret + Token/Secret).
 # - Rebrickable uses an API key in the HTTP Authorization header: "Authorization: key <KEY>".
 # - Brickset uses an API key and a simple POST/GET to /api/v3.asmx/getSets.
-#
-# ⚠️ You control what goes into the score; many signals are optional and gracefully default.
 
 from __future__ import annotations
 
@@ -38,7 +36,7 @@ from xml.dom import minidom
 # ---------- Page setup ----------
 st.set_page_config(page_title="ReUseBricks – Find Next Buy", page_icon="🧱", layout="wide")
 st.title("🧱 Find Next Buy")
-st.caption("Type a set number → fetch live data → score → build a budget‑aware basket. Export to BrickLink Wanted List or CSV.")
+st.caption("Build v1.3 — licensed guard active; type a set number → fetch live data → score → basket → export.")
 
 # ---------- Constants & helpers ----------
 ID_COL = "set_num"
@@ -135,9 +133,9 @@ with st.sidebar:
         per_set_cap = st.checkbox("Only show sets ≤ target buy cap", value=True)
     horizon_months = st.number_input("Holding horizon (months)", min_value=1, value=12, step=1)
     desired_discount_pct = st.slider("Desired discount off retail", 0, 50, 20, 1)
-    pref = st.radio("Path preference", ["Neutral", "Sealed", "Part‑out"], horizontal=True, index=0)
-    pref_weight_sealed = {"Neutral": 0.5, "Sealed": 1.0, "Part‑out": 0.0}[pref]
-    liquidity_floor = st.slider("Min 30‑day units sold", 0, 400, 50, 10)
+    pref = st.radio("Path preference", ["Neutral", "Sealed", "Part-out"], horizontal=True, index=0)
+    pref_weight_sealed = {"Neutral": 0.5, "Sealed": 1.0, "Part-out": 0.0}[pref]
+    liquidity_floor = st.slider("Min 30-day units sold", 0, 400, 50, 10)
     exclude_licensed = st.checkbox("Exclude licensed themes", value=False)
 
     st.markdown("---")
@@ -154,6 +152,12 @@ with st.sidebar:
     csv_file = st.file_uploader("Upload candidate sets CSV", type=["csv"])
     st.caption("If omitted, you can build a pool by typing set numbers below.")
 
+    st.markdown("---")
+    debug = st.checkbox("Debug mode (show schema/dtypes)", value=False)
+    if st.button("Clear cached API responses"):
+        st.cache_data.clear()
+        st.success("Cache cleared — rerun to refetch.")
+
 # ---------- API helpers (cached) ----------
 @st.cache_data(show_spinner=False)
 def rb_get(path: str, key: str, params: Optional[dict] = None):
@@ -163,7 +167,6 @@ def rb_get(path: str, key: str, params: Optional[dict] = None):
     url = f"https://rebrickable.com/api/v3{path}"
     r = requests.get(url, headers=headers, params=params or {}, timeout=20)
     if r.status_code == 429:
-        # polite backoff if throttled
         time.sleep(2.0)
         r = requests.get(url, headers=headers, params=params or {}, timeout=20)
     r.raise_for_status()
@@ -184,7 +187,6 @@ def bl_get(path: str, params: Optional[dict], ck: str, cs: str, tv: str, ts: str
         r = requests.get(url, params=params or {}, auth=auth, timeout=25)
     r.raise_for_status()
     data = r.json()
-    # BrickLink wraps payload in {"meta":{...}, "data":{...}}
     return data.get("data", {})
 
 @st.cache_data(show_spinner=False)
@@ -193,7 +195,6 @@ def bs_get_sets(set_number: str, api_key: str):
     if not api_key:
         return []
     url = "https://brickset.com/api/v3.asmx/getSets"
-    # Brickset supports GET or POST; using GET is OK here for small params
     params = {
         "apiKey": api_key,
         "params": json.dumps({"setNumber": set_number, "pageSize": 1, "pageNumber": 1, "extendedData": 0}),
@@ -232,7 +233,7 @@ def compute_subscores(df: pd.DataFrame, preference_sealed_weight: float) -> pd.D
     risk = (0.5 * _zscore(out["rerelease_risk"]) +
             0.3 * _zscore(out["licensed"]) +
             0.2 * _zscore(1.0 - out["avg_discount"]))
-    operational = 0.7 * _zscore(out["box_volume_l"])  # handling complexity placeholder
+    operational = 0.7 * _zscore(out["box_volume_l"])
     out["growth_sub"] = growth
     out["liquidity_sub"] = liquidity
     out["margin_sub"] = margin
@@ -298,19 +299,19 @@ def explain_row(r: pd.Series, med: Dict[str, float]) -> List[str]:
     if r["theme_avg_growth"] >= med["theme_avg_growth"]:
         msgs.append("Theme momentum above peer median")
     if r["trend_90d"] >= med["trend_90d"]:
-        msgs.append("Positive 90‑day trend")
+        msgs.append("Positive 90-day trend")
     if r["release_months"] >= med["release_months"]:
         msgs.append("Older release (closer to/after EOL)")
     if r["units_sold_30d"] >= med["units_sold_30d"]:
-        msgs.append("Moves quickly (30‑day velocity)")
+        msgs.append("Moves quickly (30-day velocity)")
     if r["active_sellers"] >= med["active_sellers"]:
         msgs.append("Depth of sellers")
     if r["sealed_margin_pct"] >= med["sealed_margin_pct"]:
         msgs.append("Healthy sealed margin vs retail")
     if r["part_out_ratio"] >= med["part_out_ratio"]:
-        msgs.append("Strong part‑out/retail ratio")
+        msgs.append("Strong part-out/retail ratio")
     if r["rerelease_risk"] <= med["rerelease_risk"]:
-        msgs.append("Lower re‑release risk")
+        msgs.append("Lower re-release risk")
     if r["box_volume_l"] <= med["box_volume_l"]:
         msgs.append("Compact to store")
     if _safe_bool01(r.get("licensed", 0)) == 1:
@@ -332,7 +333,7 @@ with st.expander("Lookup & add a set", expanded=True):
 
     st.caption("Tip: you can add multiple sets one after another, then scroll down to score them.")
 
-# This dict will hold the most recent fetch so "Add" can use it
+# This var will hold the most recent fetch so "Add" can use it
 if "last_fetch_row" not in st.session_state:
     st.session_state["last_fetch_row"] = None
 
@@ -388,9 +389,7 @@ def fetch_set_row(set_num_raw: str) -> Optional[pd.Series]:
     sold_total_6mo = 0
     try:
         if all([bl_consumer_key, bl_consumer_secret, bl_token_value, bl_token_secret]):
-            # Catalog sanity (optional)
-            bl_item = bl_get(f"/items/set/{set_num}", None, bl_consumer_key, bl_consumer_secret, bl_token_value, bl_token_secret)
-
+            _ = bl_get(f"/items/set/{set_num}", None, bl_consumer_key, bl_consumer_secret, bl_token_value, bl_token_secret)
             stock_new = bl_get(
                 f"/items/set/{set_num}/price",
                 {"guide_type": "stock", "new_or_used": "N", "currency_code": "USD"},
@@ -412,7 +411,6 @@ def fetch_set_row(set_num_raw: str) -> Optional[pd.Series]:
                 bl_consumer_key, bl_consumer_secret, bl_token_value, bl_token_secret
             )
 
-            # Approximations
             active_listings = len((stock_new or {}).get("price_detail") or [])
             sold_total_6mo = safe_float((sold_new or {}).get("total_quantity"), 0.0)
     except Exception as e:
@@ -422,7 +420,7 @@ def fetch_set_row(set_num_raw: str) -> Optional[pd.Series]:
     retail_price = safe_float(msrp, 0.0)
     current_new_price = safe_float((sold_new or {}).get("avg_price") or (stock_new or {}).get("avg_price"), 0.0)
     current_used_price = safe_float((sold_used or {}).get("avg_price") or (stock_used or {}).get("avg_price"), 0.0)
-    units_sold_30d = sold_total_6mo / 6.0  # rough monthly proxy from 6‑month total
+    units_sold_30d = sold_total_6mo / 6.0  # rough monthly proxy from 6-month total
     release_months = enrich_release_months(launch_dt, year)
     sealed_margin_pct = (current_new_price - retail_price) / retail_price if retail_price else 0.0
 
@@ -438,8 +436,8 @@ def fetch_set_row(set_num_raw: str) -> Optional[pd.Series]:
         "active_sellers": active_listings,
         "release_date": launch_dt or (f"{year}-01-01" if year else None),
         "licensed": is_licensed_theme(theme_name),
-        "exclusive_minifigs": 0,  # can be filled later
-        "box_volume_l": np.nan,   # filled if Brickset dimensions available later
+        "exclusive_minifigs": 0,
+        "box_volume_l": np.nan,
         "avg_discount": avg_discount_override / 100.0,
         "rerelease_risk": 0.15 if is_licensed_theme(theme_name) else 0.05,
         "theme_avg_growth": DEFAULT_THEME_GROWTH,
@@ -481,7 +479,7 @@ if st.session_state.get("last_fetch_row") is not None:
         sealed_roi = (sr["current_new_price"] - tgt) / tgt if tgt else 0.0
         st.metric("Target buy", _money(tgt))
         st.metric("Sealed ROI vs target", f"{sealed_roi*100:.1f}%")
-        st.caption("Part‑out value is optional (you can add later).")
+        st.caption("Part-out value is optional (you can add later).")
 
 # Add to pool
 if add_clicked and st.session_state.get("last_fetch_row") is not None:
@@ -526,25 +524,29 @@ for col in NUM_COLS:
         df[col] = np.nan
     df[col] = pd.to_numeric(df[col], errors="coerce")
 
+# ---- robust 'licensed' normalization (FIX for the AttributeError) ----
+licensed_series = df["licensed"] if "licensed" in df.columns else pd.Series(0, index=df.index)
+df["licensed"] = licensed_series.apply(_safe_bool01)
+
 # Derived fields
 df["release_months"] = df.apply(
     lambda r: enrich_release_months(r.get(DATE_COL), None) if pd.isna(r.get("release_months", np.nan)) else r["release_months"],
     axis=1
 )
 df["sealed_margin_pct"] = df.apply(
-    lambda r: ((r["current_new_price"] - r["retail_price"]) / r["retail_price"]) if (r.get("sealed_margin_pct") is np.nan or pd.isna(r.get("sealed_margin_pct"))) and r["retail_price"] else r.get("sealed_margin_pct", 0.0),
+    lambda r: ((r["current_new_price"] - r["retail_price"]) / r["retail_price"]) if (pd.isna(r.get("sealed_margin_pct")) if isinstance(r.get("sealed_margin_pct"), float) or r.get("sealed_margin_pct") is np.nan else False) and r["retail_price"] else (r.get("sealed_margin_pct") if not pd.isna(r.get("sealed_margin_pct")) else 0.0),
     axis=1
 )
 df["part_out_ratio"] = df.apply(
-    lambda r: (r["part_out_value"] / r["retail_price"]) if (r.get("part_out_ratio") is np.nan or pd.isna(r.get("part_out_ratio"))) and r["retail_price"] and not pd.isna(r["part_out_value"]) else r.get("part_out_ratio", np.nan),
+    lambda r: (r["part_out_value"] / r["retail_price"]) if (pd.isna(r.get("part_out_ratio")) if isinstance(r.get("part_out_ratio"), float) or r.get("part_out_ratio") is np.nan else False) and r["retail_price"] and not pd.isna(r["part_out_value"]) else (r.get("part_out_ratio") if not pd.isna(r.get("part_out_ratio")) else np.nan),
     axis=1
 )
 
-if "licensed" in df.columns:
-    df["licensed"] = df["licensed"].apply(_safe_bool01)
-else:
-    df["licensed"] = 0
-
+# Optional debug info
+if debug:
+    st.write("Schema:", list(df.columns))
+    st.write("dtypes:", df.dtypes.to_dict())
+    st.write("Head:", df.head(3))
 
 # Target buy price from desired discount
 df["target_buy_price"] = df["retail_price"] * (1 - desired_discount_pct / 100.0)
