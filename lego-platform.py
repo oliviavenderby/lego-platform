@@ -35,7 +35,7 @@ from xml.dom import minidom
 
 # ---------- Page setup ----------
 st.set_page_config(page_title="ReUseBricks – Find Next Buy", page_icon="🧱", layout="wide")
-st.title("🧱 Find Next Buy")
+st.title("LEGO Purchasing Assistant")
 st.caption("Build v1.3 — licensed guard active; type a set number → fetch live data → score → basket → export.")
 
 # ---------- Constants & helpers ----------
